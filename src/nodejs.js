@@ -123,6 +123,30 @@ const mkrequest = (statusCodes, method, encoding, headers, baseurl) => (_url, bo
   if (!c.has('accept-encoding')) {
     c.set('accept-encoding', acceptEncoding)
   }
+
+  // manage http_proxy
+  const env = caseless(process.env);
+  let proxyUrl;
+  if (parsed.protocol === 'http:' && env.get('http_proxy')) {
+    proxyUrl = env.get('http_proxy');
+  }
+  if (parsed.protocol === 'https:' && env.get('https_proxy')) {
+    proxyUrl = env.get('https_proxy');
+  }
+  if (proxyUrl) {
+    if (proxyUrl.indexOf('//') === 0) {
+      proxyUrl = 'http:' + proxyUrl;
+    }
+    let proxyParsed = url.parse(proxyUrl);
+    // at the moment only http is managed
+    if (proxyParsed.protocol === 'http:') {
+      request.hostname = proxyParsed.hostname;
+      request.port = proxyParsed.port || "80";
+      request.path = _url;
+      c.set('host', parsed.hostname);
+    }
+  }
+
   return new Promise((resolve, reject) => {
     const req = h.request(request, async res => {
       res = getResponse(res)
